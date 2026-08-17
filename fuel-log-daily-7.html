@@ -1,0 +1,636 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<title>Fuel Log</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Syne:wght@700;800&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  body {
+    background: #d1d3d8;
+    color: #1a1a2e;
+    font-family: 'DM Mono', 'Courier New', monospace;
+    max-width: 430px;
+    margin: 0 auto;
+    padding-bottom: 50px;
+    min-height: 100vh;
+  }
+  input { -webkit-appearance: none; appearance: none; }
+  input[type=number]::-webkit-inner-spin-button,
+  input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; }
+
+  /* Header */
+  #header {
+    background: #e8e9ed;
+    padding: 52px 20px 16px;
+    border-bottom: 1px solid #c0c0cc;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+    position: sticky; top: 0; z-index: 50;
+  }
+  #header-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  #app-title { font-family: 'Syne', sans-serif; font-size: 30px; font-weight: 800; letter-spacing: -0.5px; color: #1a1a2e; }
+  #header-right { display: flex; align-items: center; gap: 8px; }
+  #save-indicator { font-size: 11px; color: #bbb; letter-spacing: 0.08em; }
+  #setup-btn {
+    background: #d1d3d8; border: 1px solid #e0e0ec;
+    border-radius: 8px; color: #555; font-size: 14px; padding: 6px 12px;
+    cursor: pointer; letter-spacing: 0.05em; font-family: 'DM Mono', monospace;
+  }
+
+  /* Day navigator */
+  #day-nav {
+    display: flex; align-items: center; justify-content: space-between;
+    background: #f7f8fc; border: 1px solid #c0c0cc;
+    border-radius: 12px; padding: 10px 14px; margin-bottom: 14px;
+  }
+  .nav-btn {
+    background: #e8e9ed; border: 1px solid #e0e0ec; border-radius: 8px;
+    color: #555; font-size: 20px; width: 34px; height: 34px;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; font-family: 'DM Mono', monospace;
+    transition: background 0.15s; flex-shrink: 0;
+  }
+  .nav-btn:active { background: #d1d3d8; }
+  .nav-btn:disabled { opacity: 0.3; cursor: default; }
+  #day-nav-center { text-align: center; flex: 1; padding: 0 10px; }
+  #nav-day-name { font-family: 'Syne', sans-serif; font-size: 22px; font-weight: 800; color: #1a1a2e; }
+  #nav-day-date { font-size: 12px; color: #999; margin-top: 2px; letter-spacing: 0.06em; }
+  #today-btn {
+    background: #6366f1; border: none; border-radius: 7px;
+    color: #fff; font-size: 12px; padding: 4px 9px;
+    cursor: pointer; font-family: 'DM Mono', monospace;
+    letter-spacing: 0.05em; margin-top: 5px; display: none;
+  }
+  #today-btn.visible { display: inline-block; }
+
+  /* Summary card */
+  #summary-card {
+    border-radius: 12px; padding: 12px 16px 12px;
+    transition: background 0.4s, border-color 0.4s;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    background: #e8e9ed; border: 1px solid #c0c0cc;
+  }
+  #bank-label { font-size: 11px; letter-spacing: 0.1em; color: rgba(0,0,0,0.4); margin-bottom: 4px; }
+  #bank-row { display: flex; align-items: baseline; gap: 8px; margin-bottom: 10px; }
+  #bank-number { font-family: 'Syne', sans-serif; font-size: 32px; font-weight: 800; color: #16a34a; line-height: 1; }
+  #bank-unit { font-size: 12px; color: rgba(0,0,0,0.35); }
+  #bank-days { display: flex; gap: 6px; }
+  .bank-day {
+    flex: 1; border-radius: 8px; padding: 6px 4px; text-align: center;
+    border: 1px solid rgba(0,0,0,0.08);
+  }
+  .bank-day-name { font-size: 10px; color: #999; margin-bottom: 3px; letter-spacing: 0.04em; }
+  .bank-day-val { font-size: 13px; font-weight: 500; }
+
+  /* Day card */
+  #main-content { padding: 12px 12px 0; }
+  #day-card {
+    border-radius: 14px; overflow: hidden;
+    background: #dcdde1; border: 1.5px solid #c8c8d0;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+    padding: 16px;
+    transition: background 0.3s, border-color 0.3s;
+  }
+
+  .stats-row { display: flex; gap: 8px; margin-bottom: 16px; }
+  .stat-box { flex: 1; background: rgba(0,0,0,0.07); border-radius: 10px; padding: 12px 0; text-align: center; }
+  .stat-label { font-size: 12px; color: #999; letter-spacing: 0.08em; margin-bottom: 6px; }
+  .stat-val { font-size: 22px; font-weight: 500; }
+
+  .entry-row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 11px 0; border-bottom: 1px solid rgba(0,0,0,0.1); font-size: 20px;
+  }
+  .entry-label { color: #444; }
+  .entry-right { display: flex; gap: 10px; align-items: center; flex-shrink: 0; }
+  .remove-btn { background: none; border: none; color: #bbb; cursor: pointer; font-size: 19px; padding: 0 4px; }
+  #no-entries { text-align: center; color: #ccc; font-size: 16px; padding: 20px 0; letter-spacing: 0.05em; }
+
+  .add-section { margin-top: 14px; }
+  .type-toggle { display: flex; gap: 6px; margin-bottom: 10px; }
+  .type-btn {
+    flex: 1; padding: 10px 0; border-radius: 8px; font-size: 16px;
+    letter-spacing: 0.04em; cursor: pointer; font-family: 'DM Mono', monospace;
+    border: 1px solid #e0e0ec; background: #f7f8fc; color: #999;
+  }
+  .type-btn.active-food { background: #e8e9ed1f1; border-color: #fca5a5; color: #ef4444; }
+  .type-btn.active-workout { background: #f0fdf4; border-color: #86efac; color: #16a34a; }
+  .input-row { display: flex; gap: 8px; flex-wrap: nowrap; align-items: stretch; }
+  .input-cals {
+    flex: 1 1 0; min-width: 0;
+    background: rgba(0,0,0,0.07); border: 1px solid rgba(0,0,0,0.08);
+    border-radius: 8px; color: #1a1a2e; padding: 10px; font-size: 19px;
+    font-family: 'DM Mono', monospace; outline: none; text-align: center;
+  }
+  .input-cals::placeholder { color: #bbb; }
+  .input-cals:focus { border-color: #6366f1; background: #fafafe; }
+  .add-btn-full {
+    flex: 0 0 auto; padding: 11px 18px; border-radius: 8px; font-size: 16px; font-weight: 500;
+    letter-spacing: 0.06em; cursor: pointer; font-family: 'DM Mono', monospace; white-space: nowrap;
+  }
+  .add-btn-full.food { background: #e8e9ed1f1; border: 1px solid #fca5a5; color: #ef4444; }
+  .add-btn-full.workout { background: #f0fdf4; border: 1px solid #86efac; color: #16a34a; }
+
+  /* Weight history */
+  #weight-history-section { padding: 8px 12px 0; }
+  #weight-history-card { background: #e8e9ed; border: 1px solid #c0c0cc; border-radius: 14px; padding: 14px; box-shadow: 0 1px 4px rgba(0,0,0,0.05); }
+  #weight-history-title { font-size: 12px; color: #999; letter-spacing: 0.1em; margin-bottom: 10px; }
+  .weight-row { display: flex; justify-content: space-between; font-size: 15px; color: #999; padding: 5px 0; border-bottom: 1px solid #c0c0cc; }
+  .weight-row:last-child { border-bottom: none; }
+  .weight-val { color: #555; }
+  .weight-msg { margin-top: 12px; padding: 10px 14px; border-radius: 10px; font-size: 16px; line-height: 1.5; text-align: center; font-weight: 500; }
+  .weight-msg.good { background: #f0fdf4; border: 1px solid #86efac; color: #15803d; }
+  .weight-msg.great { background: #fefce8; border: 1px solid #fde047; color: #854d0e; font-size: 18px; font-weight: 700; }
+  .weight-msg.warn { background: #e8e9ed7ed; border: 1px solid #fdba74; color: #9a3412; }
+  .weight-msg.bad { background: #fef2f2; border: 1px solid #fca5a5; color: #991b1b; font-size: 20px; font-weight: 800; font-family: 'Syne', sans-serif; }
+
+  /* PIN modal */
+  #pin-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.35); display: flex; align-items: center; justify-content: center; z-index: 300; }
+  #pin-overlay.hidden { display: none; }
+  #pin-box { background: #e8e9ed; border: 1px solid #c0c0cc; border-radius: 20px; padding: 28px 24px 24px; width: 300px; box-shadow: 0 8px 32px rgba(0,0,0,0.12); text-align: center; }
+  #pin-icon { font-size: 35px; margin-bottom: 10px; }
+  #pin-title { font-family: 'Syne', sans-serif; font-size: 21px; font-weight: 800; color: #1a1a2e; margin-bottom: 4px; }
+  #pin-subtitle { font-size: 14px; color: #999; margin-bottom: 20px; letter-spacing: 0.04em; }
+  #pin-dots { display: flex; justify-content: center; gap: 12px; margin-bottom: 20px; }
+  .pin-dot { width: 14px; height: 14px; border-radius: 50%; background: #c0c0cc; transition: background 0.15s; }
+  .pin-dot.filled { background: #6366f1; }
+  .pin-dot.error { background: #ef4444; }
+  #pin-error { font-size: 14px; color: #ef4444; min-height: 16px; margin-bottom: 8px; }
+  #pin-keypad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 14px; }
+  .pin-key { padding: 14px 0; background: #d1d3d8; border: 1px solid #b8b8c4; border-radius: 12px; font-family: 'Syne', sans-serif; font-size: 22px; font-weight: 700; color: #1a1a2e; cursor: pointer; transition: background 0.1s; }
+  .pin-key:active { background: #c0c0cc; }
+  .pin-key.del { font-size: 20px; color: #999; }
+  .pin-key.empty { background: transparent; border-color: transparent; cursor: default; }
+  #pin-cancel-btn { width: 100%; padding: 11px; background: none; border: none; color: #999; font-size: 15px; cursor: pointer; font-family: 'DM Mono', monospace; }
+
+  /* Setup modal */
+  #budget-lock-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+  #lock-btn { background: none; border: 1px solid #c0c0cc; border-radius: 8px; font-size: 14px; padding: 4px 10px; cursor: pointer; color: #999; font-family: 'DM Mono', monospace; display: flex; align-items: center; gap: 5px; transition: all 0.2s; }
+  #lock-btn.locked { background: #fef9ee; border-color: #fde68a; color: #92400e; }
+  #setup-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.3); display: flex; align-items: flex-end; z-index: 100; }
+  #setup-overlay.hidden { display: none; }
+  #setup-sheet { width: 100%; max-width: 430px; margin: 0 auto; background: #e8e9ed; border-top: 1px solid #c0c0cc; border-radius: 20px 20px 0 0; padding: 28px 24px 48px; box-shadow: 0 -4px 24px rgba(0,0,0,0.1); }
+  #setup-title { font-family: 'Syne', sans-serif; font-size: 25px; font-weight: 800; margin-bottom: 4px; color: #1a1a2e; }
+  #setup-subtitle { font-size: 14px; color: #999; margin-bottom: 24px; }
+  .setup-field-label { font-size: 12px; color: #999; letter-spacing: 0.1em; margin-bottom: 8px; }
+  .setup-input { width: 100%; background: #d1d3d8; border: 1px solid #b8b8c4; border-radius: 10px; color: #1a1a2e; padding: 14px 16px; font-size: 25px; font-family: 'Syne', sans-serif; font-weight: 700; outline: none; margin-bottom: 16px; }
+  .setup-input:focus { border-color: #6366f1; }
+  #start-btn { width: 100%; padding: 16px; margin-top: 8px; background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); border: none; border-radius: 12px; color: #fff; font-family: 'Syne', sans-serif; font-size: 18px; font-weight: 800; letter-spacing: 0.08em; cursor: pointer; box-shadow: 0 4px 14px rgba(99,102,241,0.35); }
+</style>
+</head>
+<body>
+
+<div id="header">
+  <div id="header-top">
+    <div id="app-title">FUEL LOG</div>
+    <div id="header-right">
+      <div id="save-indicator"></div>
+      <button id="setup-btn" onclick="openSetup()">⚙ SETUP</button>
+    </div>
+  </div>
+
+  <div id="day-nav">
+    <button class="nav-btn" id="prev-btn" onclick="shiftDay(-1)">‹</button>
+    <div id="day-nav-center">
+      <div id="nav-day-name"></div>
+      <div id="nav-day-date"></div>
+      <button id="today-btn" onclick="goToToday()">TODAY</button>
+    </div>
+    <button class="nav-btn" id="next-btn" onclick="shiftDay(1)">›</button>
+  </div>
+
+  <div id="summary-card">
+    <div id="bank-label">BANK</div>
+    <div id="bank-row">
+      <div id="bank-number">0</div>
+      <div id="bank-unit">kcal saved</div>
+    </div>
+    <div id="bank-days"></div>
+  </div>
+</div>
+
+<div id="main-content">
+  <div id="day-card"></div>
+</div>
+
+<div id="weight-history-section" style="display:none">
+  <div id="weight-history-card">
+    <div id="weight-history-title">WEIGHT HISTORY</div>
+    <div id="weight-history-list"></div>
+  </div>
+</div>
+
+<!-- Setup Modal -->
+<div id="setup-overlay" class="hidden">
+  <div id="setup-sheet">
+    <div id="setup-title">SETUP</div>
+    <div id="setup-subtitle">Set your daily targets</div>
+    <div id="budget-lock-row">
+      <div class="setup-field-label" style="margin-bottom:0">DAILY CALORIE BUDGET</div>
+      <button id="lock-btn" onclick="handleLockBtn()">🔓 LOCK</button>
+    </div>
+    <input type="number" inputmode="decimal" id="budget-input" class="setup-input" value="2000" style="margin-top:8px">
+    <div id="budget-lock-hint" style="display:none; font-size:11px; color:#92400e; background:#fef9ee; border:1px solid #fde68a; border-radius:8px; padding:8px 12px; margin-bottom:12px; text-align:center; cursor:pointer;" onclick="handleLockBtn()">🔒 Tap LOCKED to enter PIN and edit budget</div>
+    <div class="setup-field-label">THIS WEEK'S WEIGHT (lbs)</div>
+    <input type="number" inputmode="decimal" id="weight-input" class="setup-input" placeholder="e.g. 185">
+    <button id="start-btn" onclick="saveSetup()">SAVE →</button>
+  </div>
+</div>
+
+<!-- PIN Modal -->
+<div id="pin-overlay" class="hidden">
+  <div id="pin-box">
+    <div id="pin-icon">🔐</div>
+    <div id="pin-title"></div>
+    <div id="pin-subtitle"></div>
+    <div id="pin-dots">
+      <div class="pin-dot" id="dot-0"></div>
+      <div class="pin-dot" id="dot-1"></div>
+      <div class="pin-dot" id="dot-2"></div>
+      <div class="pin-dot" id="dot-3"></div>
+    </div>
+    <div id="pin-error"></div>
+    <div id="pin-keypad">
+      <button class="pin-key" onclick="pinKey('1')">1</button>
+      <button class="pin-key" onclick="pinKey('2')">2</button>
+      <button class="pin-key" onclick="pinKey('3')">3</button>
+      <button class="pin-key" onclick="pinKey('4')">4</button>
+      <button class="pin-key" onclick="pinKey('5')">5</button>
+      <button class="pin-key" onclick="pinKey('6')">6</button>
+      <button class="pin-key" onclick="pinKey('7')">7</button>
+      <button class="pin-key" onclick="pinKey('8')">8</button>
+      <button class="pin-key" onclick="pinKey('9')">9</button>
+      <button class="pin-key empty"></button>
+      <button class="pin-key" onclick="pinKey('0')">0</button>
+      <button class="pin-key del" onclick="pinBackspace()">⌫</button>
+    </div>
+    <button id="pin-cancel-btn" onclick="closePIN()">Cancel</button>
+  </div>
+</div>
+
+<script>
+const DAYS_LONG = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+const MONTHS    = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+
+// ─── Day key helpers ──────────────────────────────────────
+function getDayKey(date) {
+  const d = date || new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+function shiftDayKey(key, n) {
+  const d = new Date(key + "T00:00:00");
+  d.setDate(d.getDate() + n);
+  return getDayKey(d);
+}
+
+function formatDayFull(key) {
+  const d = new Date(key + "T00:00:00");
+  return `${MONTHS[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`;
+}
+
+function getDayOfWeek(key) {
+  return new Date(key + "T00:00:00").getDay();
+}
+
+function getWeekKey(dayKey) {
+  const d = dayKey ? new Date(dayKey + "T00:00:00") : new Date();
+  const day = d.getDay();
+  // Shift so week starts Monday (day 1). Sunday (0) becomes 6 days back.
+  const diff = (day === 0) ? 6 : day - 1;
+  d.setDate(d.getDate() - diff);
+  return getDayKey(d);
+}
+
+function formatWeekRange(weekKey) {
+  const s = new Date(weekKey + "T00:00:00");
+  const e = new Date(s); e.setDate(s.getDate() + 6);
+  return `${MONTHS[s.getMonth()]} ${s.getDate()} – ${MONTHS[e.getMonth()]} ${e.getDate()}`;
+}
+
+// ─── State ────────────────────────────────────────────────
+const TODAY = getDayKey();
+
+let state = {
+  budget: 2000,
+  currentWeight: null,
+  weightHistory: [],
+  allDays: {},
+  viewingDay: TODAY,
+  addType: "food",
+  budgetPin: null,
+  budgetUnlocked: false,
+};
+
+function emptyDay() { return { calories: [], workouts: [] }; }
+
+function getDayData(key) {
+  if (!state.allDays[key]) state.allDays[key] = emptyDay();
+  return state.allDays[key];
+}
+
+// ─── Persistence ──────────────────────────────────────────
+function saveState() {
+  try {
+    const cutoff = shiftDayKey(TODAY, -35);
+    Object.keys(state.allDays).forEach(k => { if (k < cutoff) delete state.allDays[k]; });
+    state.weightHistory = state.weightHistory.filter(h => h.date >= getWeekKey(cutoff));
+    const payload = JSON.stringify({ budget: state.budget, currentWeight: state.currentWeight, weightHistory: state.weightHistory, allDays: state.allDays, budgetPin: state.budgetPin, savedAt: Date.now() });
+    localStorage.setItem("fuellog3", payload);
+    localStorage.setItem("fuellog3_bk", payload);
+    showSaveIndicator();
+  } catch(e) {}
+}
+
+function loadState() {
+  try {
+    const raw = localStorage.getItem("fuellog3") || localStorage.getItem("fuellog3_bk");
+    if (!raw) { openSetup(); return; }
+    const s = JSON.parse(raw);
+    state.budget        = s.budget || 2000;
+    state.currentWeight = s.currentWeight || null;
+    state.weightHistory = s.weightHistory || [];
+    state.allDays       = s.allDays || {};
+    state.budgetPin     = s.budgetPin || null;
+    state.budgetUnlocked = false;
+  } catch(e) { openSetup(); }
+}
+
+let saveTimer = null;
+function showSaveIndicator() {
+  const el = document.getElementById("save-indicator");
+  el.textContent = "SAVED ✓"; el.style.color = "#6366f1";
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => { el.textContent = ""; }, 1500);
+}
+
+// ─── Colors ───────────────────────────────────────────────
+function getColor(r)      { return r >= 0 ? "#16a34a" : "#dc2626"; }
+function getCardBg(r)     { return r >= 0 ? "#f0fdf4" : "#fef2f2"; }
+function getCardBorder(r) { return r >= 0 ? "#86efac" : "#fca5a5"; }
+
+// ─── Stats ────────────────────────────────────────────────
+function getDayStats(d) {
+  const eaten  = d.calories.reduce((a,c) => a+c.amount, 0);
+  const burned = d.workouts.reduce((a,w) => a+w.amount, 0);
+  return { eaten, burned, remaining: state.budget - eaten + burned };
+}
+
+// ─── Weekly calorie bank ──────────────────────────────────
+function getWeeklyBank(viewingDay) {
+  const weekStart = getWeekKey(viewingDay);
+  const viewingWeekStart = getWeekKey(TODAY);
+  const isCurrentWeek = weekStart === viewingWeekStart;
+  const days = [];
+  for (let i = 0; i < 7; i++) {
+    const dayKey = shiftDayKey(weekStart, i);
+    // For current week: only count past days (midnight passed)
+    // For past weeks: count all 7 days
+    if (isCurrentWeek && dayKey >= TODAY) break;
+    const d = state.allDays[dayKey];
+    const stats = d ? getDayStats(d) : { remaining: 0 };
+    const saved = stats.remaining > 0 ? stats.remaining : 0;
+    days.push({ dayKey, saved });
+  }
+  const total = days.reduce((a, d) => a + d.saved, 0);
+  return { total, days, weekStart, isCurrentWeek };
+}
+
+// ─── Navigation ───────────────────────────────────────────
+function shiftDay(n) { state.viewingDay = shiftDayKey(state.viewingDay, n); render(); }
+function goToToday() { state.viewingDay = TODAY; render(); }
+
+// ─── Render ───────────────────────────────────────────────
+function render() {
+  const dayData = getDayData(state.viewingDay);
+  const ds = getDayStats(dayData);
+  const isCurrentDay = state.viewingDay === TODAY;
+  const hasData = ds.eaten > 0 || ds.burned > 0;
+
+  // Navigator
+  document.getElementById("nav-day-name").textContent = isCurrentDay ? "TODAY" : DAYS_LONG[getDayOfWeek(state.viewingDay)].toUpperCase();
+  document.getElementById("nav-day-date").textContent = formatDayFull(state.viewingDay);
+  document.getElementById("nav-day-date").style.color = isCurrentDay ? "#6366f1" : "#999";
+  document.getElementById("next-btn").disabled = isCurrentDay;
+  document.getElementById("prev-btn").disabled = state.viewingDay <= shiftDayKey(TODAY, -35);
+  document.getElementById("today-btn").classList.toggle("visible", !isCurrentDay);
+
+  // Weekly bank card
+  const bank = getWeeklyBank(state.viewingDay);
+  document.getElementById("bank-number").textContent = "+" + bank.total.toLocaleString();
+  document.getElementById("bank-number").style.color = bank.total > 0 ? "#16a34a" : "#ccc";
+  document.getElementById("bank-label").textContent = bank.isCurrentWeek ? "BANK" : "WEEK OF " + formatDayFull(bank.weekStart).toUpperCase();
+
+  const DAY_ABBR = ["M","T","W","T","F","S","S"];
+  let bankDaysHtml = "";
+  for (let i = 0; i < 7; i++) {
+    const dayKey = shiftDayKey(bank.weekStart, i);
+    const isPast = dayKey < TODAY;
+    const isToday2 = dayKey === TODAY;
+    const bankDay = bank.days.find(d => d.dayKey === dayKey);
+    let bg, val, valColor;
+    if (isToday2 && bank.isCurrentWeek) {
+      bg = "background: rgba(99,102,241,0.08); border-color: rgba(99,102,241,0.2);";
+      val = "·"; valColor = "#6366f1";
+    } else if (!isPast) {
+      bg = "background: rgba(0,0,0,0.05);";
+      val = "·"; valColor = "#ccc";
+    } else if (bankDay && bankDay.saved > 0) {
+      bg = "background: #f0fdf4; border-color: #86efac;";
+      val = "+" + bankDay.saved; valColor = "#16a34a";
+    } else {
+      bg = "background: rgba(0,0,0,0.05);";
+      val = isPast || !bank.isCurrentWeek ? "0" : "·"; valColor = "#ccc";
+    }
+    bankDaysHtml += `<div class="bank-day" style="${bg}">
+      <div class="bank-day-name">${DAY_ABBR[i]}</div>
+      <div class="bank-day-val" style="color:${valColor}">${val}</div>
+    </div>`;
+  }
+  document.getElementById("bank-days").innerHTML = bankDaysHtml;
+
+  renderDayCard(dayData, ds, getColor(ds.remaining), hasData);
+  renderWeightHistory();
+}
+
+function renderDayCard(dayData, s, color, hasData) {
+  const el = document.getElementById("day-card");
+  el.style.borderColor = hasData ? getCardBorder(s.remaining) : "#c0c0cc";
+  el.style.background  = hasData ? getCardBg(s.remaining)     : "#dcdde1";
+
+  const statsRow = `<div class="stats-row">
+    <div class="stat-box"><div class="stat-label">BUDGET</div><div class="stat-val" style="color:#aaa">${state.budget}</div></div>
+    <div class="stat-box"><div class="stat-label">EATEN</div><div class="stat-val" style="color:#ef4444">${s.eaten}</div></div>
+    <div class="stat-box"><div class="stat-label">BURNED</div><div class="stat-val" style="color:#16a34a">${s.burned}</div></div>
+    <div class="stat-box"><div class="stat-label">NET</div><div class="stat-val" style="color:${color}">${s.remaining}</div></div>
+  </div>`;
+
+  const entries = [
+    ...dayData.calories.map((c,j) => `<div class="entry-row"><span class="entry-label">🍽 ${escHtml(c.label)}</span><div class="entry-right"><span style="color:#ef4444">−${c.amount}</span><button class="remove-btn" onclick="removeEntry('food',${j})">✕</button></div></div>`),
+    ...dayData.workouts.map((w,j) => `<div class="entry-row"><span class="entry-label">🔥 ${escHtml(w.label)}</span><div class="entry-right"><span style="color:#16a34a">+${w.amount}</span><button class="remove-btn" onclick="removeEntry('workout',${j})">✕</button></div></div>`)
+  ].join("");
+
+  const noEntries = !hasData ? `<div id="no-entries">No entries yet</div>` : "";
+
+  const addType = state.addType;
+  const addSection = `<div class="add-section">
+    <div class="type-toggle">
+      <button class="type-btn ${addType==='food'?'active-food':''}" onclick="setAddType('food')">🍽 FOOD</button>
+      <button class="type-btn ${addType==='workout'?'active-workout':''}" onclick="setAddType('workout')">🔥 WORKOUT</button>
+    </div>
+    <div class="input-row">
+      <input class="input-cals" id="cal-input" placeholder="kcal" type="number" inputmode="decimal" onkeydown="if(event.key==='Enter') addEntry()">
+      <button class="add-btn-full ${addType}" onclick="addEntry()">+ ADD ${addType==='food'?'FOOD':'WORKOUT'}</button>
+    </div>
+  </div>`;
+
+  el.innerHTML = statsRow + noEntries + entries + addSection;
+}
+
+let weightMsgTimer = null;
+let showWeightMsg = false;
+function renderWeightHistory() {
+  const section = document.getElementById("weight-history-section");
+  const list    = document.getElementById("weight-history-list");
+  if (!state.weightHistory.length) { section.style.display = "none"; return; }
+  section.style.display = "block";
+  const recent = [...state.weightHistory].reverse().slice(0, 3);
+  let msg = "";
+  if (showWeightMsg && recent.length >= 2) {
+    const diff = recent[0].weight - recent[1].weight;
+    const abs  = Math.abs(diff);
+    const rand = arr => arr[Math.floor(Math.random()*arr.length)];
+    if      (diff < 0 && abs < 5) msg = `<div class="weight-msg good" id="weight-msg">${rand(["👏 Keep it up! You're trending in the right direction!","🌟 Nice work! Those pounds are adding up — keep going!","💪 You're doing great! Consistency is everything!","🔥 Progress! Small wins lead to big results!","✨ Looking good! Stay the course and keep crushing it!"])}</div>`;
+    else if (diff < 0)             msg = `<div class="weight-msg great" id="weight-msg">${rand(["🏆 INCREDIBLE! You're absolutely crushing your goals!","🚀 WOW! That's serious progress — you should be SO proud!","🔥💪 BEAST MODE! Keep this energy going — unstoppable!"])}</div>`;
+    else if (diff > 0 && abs < 5) msg = `<div class="weight-msg warn" id="weight-msg">${rand(["🙄 Mmm... those calories aren't going to count themselves.","😬 Looks like someone had a little too much fun this week...","🍕 The scale noticed. Just saying.","😅 We all have setbacks. Yours just happens to be edible.","🤨 Those extra lbs didn't log themselves — time to refocus!"])}</div>`;
+    else if (diff > 0)             msg = `<div class="weight-msg bad" id="weight-msg">${rand(["Bomboclaat!!!","Whoopa Sized Mompie 🐷","Gorda Puerca 🐖"])}</div>`;
+    showWeightMsg = false;
+  }
+  list.innerHTML = recent.map((h, idx) => {
+    let change = "";
+    if (idx < recent.length - 1) {
+      const d = h.weight - recent[idx+1].weight;
+      change = `<span style="color:${d<0?'#16a34a':d>0?'#ef4444':'#aaa'};font-size:12px;margin-left:6px">${d<0?'↓':d>0?'↑':'→'} ${Math.abs(d).toFixed(1)}</span>`;
+    }
+    return `<div class="weight-row"><span>${formatDayFull(h.date)}</span><span class="weight-val">${h.weight} lbs${change}</span></div>`;
+  }).join("") + msg;
+
+  // Auto-dismiss message after 10 seconds
+  if (msg) {
+    clearTimeout(weightMsgTimer);
+    weightMsgTimer = setTimeout(() => {
+      const el = document.getElementById("weight-msg");
+      if (el) el.remove();
+    }, 10000);
+  }
+}
+
+// ─── PIN ──────────────────────────────────────────────────
+let pinBuffer="", pinMode="", pinFirstEntry="", pinCallback=null;
+
+function openPIN(mode, cb, preserveFirst) {
+  pinBuffer=""; pinMode=mode; if(!preserveFirst) pinFirstEntry=""; pinCallback=cb;
+  const T={"set-new":"Create a PIN","confirm-new":"Confirm your PIN","unlock":"Enter PIN to Edit","remove":"Enter PIN to Remove Lock"};
+  const S={"set-new":"Choose a 4-digit PIN to lock the budget","confirm-new":"Re-enter your PIN to confirm","unlock":"Enter your PIN to unlock the budget field","remove":"Enter your PIN to remove the budget lock"};
+  document.getElementById("pin-title").textContent=T[mode]||"Enter PIN";
+  document.getElementById("pin-subtitle").textContent=S[mode]||"";
+  document.getElementById("pin-error").textContent="";
+  updatePinDots();
+  document.getElementById("pin-overlay").classList.remove("hidden");
+}
+function closePIN() { document.getElementById("pin-overlay").classList.add("hidden"); pinBuffer=""; }
+function pinKey(d) { if(pinBuffer.length>=4) return; pinBuffer+=d; updatePinDots(); if(pinBuffer.length===4) setTimeout(processPIN,120); }
+function pinBackspace() { pinBuffer=pinBuffer.slice(0,-1); document.getElementById("pin-error").textContent=""; updatePinDots(); }
+function updatePinDots() { for(let i=0;i<4;i++){const d=document.getElementById("dot-"+i);d.classList.toggle("filled",i<pinBuffer.length);d.classList.remove("error");} }
+function flashError(msg) {
+  document.getElementById("pin-error").textContent=msg;
+  for(let i=0;i<4;i++){const d=document.getElementById("dot-"+i);d.classList.remove("filled");d.classList.add("error");}
+  setTimeout(()=>{pinBuffer="";updatePinDots();document.getElementById("pin-error").textContent=msg;},500);
+}
+function processPIN() {
+  if(pinMode==="set-new"){pinFirstEntry=pinBuffer;pinBuffer="";updatePinDots();openPIN("confirm-new",pinCallback,true);return;}
+  if(pinMode==="confirm-new"){
+    if(pinBuffer===pinFirstEntry){state.budgetPin=pinBuffer;state.budgetUnlocked=false;saveState();closePIN();updateLockBtn();applyBudgetLock();if(pinCallback)pinCallback();}
+    else{flashError("PINs don't match — try again");setTimeout(()=>openPIN("set-new",pinCallback,false),1200);}
+    return;
+  }
+  if(pinMode==="unlock"){if(pinBuffer===state.budgetPin){state.budgetUnlocked=true;closePIN();updateLockBtn();applyBudgetLock();}else{flashError("Incorrect PIN");pinBuffer="";}return;}
+  if(pinMode==="remove"){if(pinBuffer===state.budgetPin){state.budgetPin=null;state.budgetUnlocked=false;saveState();closePIN();updateLockBtn();applyBudgetLock();}else{flashError("Incorrect PIN");pinBuffer="";}return;}
+}
+function handleLockBtn() {
+  if(!state.budgetPin) openPIN("set-new",null);
+  else if(state.budgetUnlocked){state.budgetUnlocked=false;updateLockBtn();applyBudgetLock();}
+  else openPIN("unlock",null);
+}
+function updateLockBtn() {
+  const btn=document.getElementById("lock-btn"); if(!btn) return;
+  const locked=state.budgetPin&&!state.budgetUnlocked;
+  btn.className=locked?"locked":"";
+  btn.textContent=!state.budgetPin?"🔓 LOCK":locked?"🔒 LOCKED":"🔓 UNLOCK";
+}
+function applyBudgetLock() {
+  const inp=document.getElementById("budget-input"); if(!inp) return;
+  const locked=state.budgetPin&&!state.budgetUnlocked;
+  inp.disabled=locked; inp.style.opacity=locked?"0.4":"1"; inp.style.cursor=locked?"not-allowed":"";
+  const hint=document.getElementById("budget-lock-hint");
+  if(hint) hint.style.display=locked?"block":"none";
+}
+
+// ─── Actions ──────────────────────────────────────────────
+function setAddType(type) {
+  state.addType = type;
+  render();
+  setTimeout(() => { const inp = document.getElementById("cal-input"); if (inp) inp.focus(); }, 50);
+}
+
+function addEntry() {
+  const inp=document.getElementById("cal-input");
+  const amount=parseInt(inp.value);
+  if(isNaN(amount)||amount<=0){inp.focus();return;}
+  const day=getDayData(state.viewingDay);
+  if(state.addType==="food") day.calories.push({label:"Food",amount});
+  else day.workouts.push({label:"Workout",amount});
+  inp.value="";
+  saveState(); render();
+  setTimeout(()=>{ const i=document.getElementById("cal-input"); if(i) i.focus(); },50);
+}
+
+function removeEntry(type, idx) {
+  const day=getDayData(state.viewingDay);
+  if(type==="food") day.calories.splice(idx,1);
+  else day.workouts.splice(idx,1);
+  saveState(); render();
+}
+
+function openSetup() {
+  document.getElementById("budget-input").value=state.budget;
+  document.getElementById("weight-input").value="";  // always blank — enter new weight each time
+  document.getElementById("setup-overlay").classList.remove("hidden");
+  setTimeout(()=>{updateLockBtn();applyBudgetLock();},0);
+}
+
+function saveSetup() {
+  const b=parseInt(document.getElementById("budget-input").value);
+  const w=parseFloat(document.getElementById("weight-input").value);
+  if(!isNaN(b)&&b>0) state.budget=b;
+  if(!isNaN(w)&&w>0) {
+    state.currentWeight=w;
+    state.weightHistory.push({ date: TODAY, weight: w });
+    state.weightHistory.sort((a,b)=>a.date.localeCompare(b.date));
+    showWeightMsg = true;
+  }
+  if(state.budgetPin) state.budgetUnlocked=false;
+  document.getElementById("setup-overlay").classList.add("hidden");
+  saveState(); render();
+}
+
+function escHtml(s) { return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+
+loadState();
+render();
+</script>
+</body>
+</html>
