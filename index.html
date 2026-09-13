@@ -392,10 +392,11 @@ function getWeeklyBank(viewingDay) {
     if (isCurrentWeek && dayKey >= TODAY) break;
     const d = state.allDays[dayKey];
     const stats = d ? getDayStats(d) : { remaining: 0 };
-    const saved = stats.remaining > 0 ? stats.remaining : 0;
-    days.push({ dayKey, saved });
+    // Include positive AND negative — negative days subtract from bank
+    const net = (d && (d.calories.length > 0 || d.workouts.length > 0)) ? stats.remaining : 0;
+    days.push({ dayKey, net });
   }
-  const total = days.reduce((a, d) => a + d.saved, 0);
+  const total = days.reduce((a, d) => a + d.net, 0);
   return { total, days, weekStart, isCurrentWeek };
 }
 
@@ -420,8 +421,9 @@ function render() {
 
   // Weekly bank card
   const bank = getWeeklyBank(state.viewingDay);
-  document.getElementById("bank-number").textContent = "+" + bank.total.toLocaleString();
-  document.getElementById("bank-number").style.color = bank.total > 0 ? "#16a34a" : "#ccc";
+  const bankTotal = bank.total;
+  document.getElementById("bank-number").textContent = (bankTotal >= 0 ? "+" : "") + bankTotal.toLocaleString();
+  document.getElementById("bank-number").style.color = bankTotal > 0 ? "#16a34a" : bankTotal < 0 ? "#dc2626" : "#ccc";
   document.getElementById("bank-label").textContent = bank.isCurrentWeek ? "BANK" : "WEEK OF " + formatDayFull(bank.weekStart).toUpperCase();
 
   const DAY_ABBR = ["M","T","W","T","F","S","S"];
@@ -438,9 +440,12 @@ function render() {
     } else if (!isPast) {
       bg = "background: rgba(0,0,0,0.05);";
       val = "·"; valColor = "#ccc";
-    } else if (bankDay && bankDay.saved > 0) {
+    } else if (bankDay && bankDay.net > 0) {
       bg = "background: #f0fdf4; border-color: #86efac;";
-      val = "+" + bankDay.saved; valColor = "#16a34a";
+      val = "+" + bankDay.net; valColor = "#16a34a";
+    } else if (bankDay && bankDay.net < 0) {
+      bg = "background: #fef2f2; border-color: #fca5a5;";
+      val = bankDay.net; valColor = "#dc2626";
     } else {
       bg = "background: rgba(0,0,0,0.05);";
       val = isPast || !bank.isCurrentWeek ? "0" : "·"; valColor = "#ccc";
